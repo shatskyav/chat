@@ -4,7 +4,9 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, ExtCtrls, Sockets, StdCtrls, IniFiles;
+  Dialogs, ExtCtrls, Sockets, StdCtrls, IniFiles, IdBaseComponent, IdComponent,
+  IdTCPConnection, IdTCPClient, IdExplicitTLSClientServerBase, IdMessageClient,
+  IdSMTPBase, IdSMTP, IdMessage;
 
 type
   TFmChat = class(TForm)
@@ -19,6 +21,8 @@ type
     lstUser: TListBox;
     tcl1: TTcpClient;
     tmr1: TTimer;
+    IdSMTP1: TIdSMTP;
+    idmsg1: TIdMessage;
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure FormShow(Sender: TObject);
     procedure btnSendClick(Sender: TObject);
@@ -32,6 +36,7 @@ type
     { Private declarations }
   public
     { Public declarations }
+    procedure sendmessage(s:string);
   end;
 
   TMyClientThread = class(TClientSocketThread)
@@ -115,27 +120,61 @@ end;
 
 procedure  TMyClientThread.SyncProc;
 begin
-   if FData<>'' then
+   //проверка на закрытие соединения
+   if FData='Terminate' then
    begin
-     if FData='Terminate' then
-      begin
          Terminate;
          ClientSocket.Sendln('Terminate');
-         Exit;
-      end;
+         exit;
+   end;
+   //проверка на отправку письма
+   if Pos('mailto:',FData)=1 then
+   begin
+       FmChat.sendmessage(fdata);
+   end;
+   //проверка на непустое сообщение
+   if FData<>'' then
+   begin
      FmChat.tmChat.Lines.Add(FUser+': '+FData);
      ClientSocket.Sendln('-> : '+FData);
-   end
-   else
-    begin
-     if Sserver<>'' then
+   end;
+   //проверка на новые сообщения других клиентов
+   if Sserver<>'' then
         ClientSocket.Sendln(SServer)
-     else
+   else
         ClientSocket.Sendln('');
-    end;
 
 end;
 
+procedure TFmChat.sendmessage(s: string);
+var serv,klient,body:string;
+    i,j:Integer;
+begin
+     i:=Pos('mailto:',s)+7;
+     j:=Pos('[',s);
+     serv:=Copy(s,i,j-i);
+     i:=Pos('@',serv);
+     klient:=copy(serv,1,i-1);
+     serv:=Copy(serv,i+1,Length(serv)-i);
+
+     body:=Copy(s,j+1,Length(s)-j-1);
+
+     IdSmtp1.Host:= 'smtp.'+serv;
+     IdSmtp1.Port := 25;
+     idSmtp1.Username := klient;
+     idSmtp1.Password := '';
+ //    IdMsg1.CharSet := 'UTF-8';// кодировка
+ //    IdMsg1.ContentTransferEncoding := '8bit';
+     IdMsg1.ContentType:='text/plain'; // Письмо в текстовом виде
+     IdMsg1.Body.Text := body;
+     IdMsg1.From.Text :='chat';
+     IdMsg1.Recipients.EMailAddresses := '';
+     IdMsg1.Subject := 'chat message';
+     idSmtp1.Connect;
+     if idSmtp1.Connected = TRUE then
+     idSmtp1.Send(idMsg1);
+     idSmtp1.Disconnect();
+end;
 
 procedure TFmChat.btnSendClick(Sender: TObject);
 var s:AnsiString;

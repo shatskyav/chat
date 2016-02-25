@@ -102,4 +102,24 @@ object FmChat: TFmChat
     Left = 640
     Top = 8
   end
+  object IdSMTP1: TIdSMTP
+    AuthType = satNone
+    SASLMechanisms = <>
+    Left = 744
+    Top = 64
+  end
+  object idmsg1: TIdMessage
+    AttachmentEncoding = 'MIME'
+    BccList = <>
+    CCList = <>
+    Encoding = meDefault
+    FromList = <
+      item
+      end>
+    Recipients = <>
+    ReplyTo = <>
+    ConvertPreamble = True
+    Left = 792
+    Top = 64
+  end
 end
